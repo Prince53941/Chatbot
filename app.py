@@ -1,50 +1,60 @@
 import streamlit as st
-import os
-from openai import OpenAI
+import requests
 
-# Get API key directly from environment / Streamlit secrets
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+st.set_page_config(page_title="Sports Chatbot", layout="centered")
+st.title("🏆 Sports Chatbot (Free API)")
 
-st.set_page_config(page_title="AI Chatbot", layout="centered")
-st.title("🤖 Advanced AI Chatbot")
-
-SYSTEM_PROMPT = "You are a professional, highly intelligent AI assistant."
+API_URL = "https://www.thesportsdb.com/api/v1/json/3/searchteams.php"
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "system", "content": SYSTEM_PROMPT}
-    ]
+    st.session_state.messages = []
 
-# Show history
-for msg in st.session_state.messages[1:]:
+# Show chat history
+for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-prompt = st.chat_input("Ask anything...")
+user_input = st.chat_input("Ask about any sports team (example: Barcelona, Real Madrid, India cricket)...")
 
-if prompt:
+if user_input:
 
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": user_input})
 
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(user_input)
 
     with st.chat_message("assistant"):
 
-        placeholder = st.empty()
-        full_response = ""
+        response_text = ""
 
-        stream = client.chat.completions.create(
-            model="gpt-4o",
-            messages=st.session_state.messages,
-            stream=True
-        )
+        params = {"t": user_input}
+        response = requests.get(API_URL, params=params)
 
-        for chunk in stream:
-            if chunk.choices[0].delta.content:
-                full_response += chunk.choices[0].delta.content
-                placeholder.markdown(full_response)
+        if response.status_code == 200:
+            data = response.json()
 
-    st.session_state.messages.append(
-        {"role": "assistant", "content": full_response}
-    )
+            if data["teams"]:
+
+                team = data["teams"][0]
+
+                response_text = f"""
+### 🏟 {team['strTeam']}
+
+🏆 League: {team['strLeague']}  
+📍 Stadium: {team['strStadium']}  
+🌍 Country: {team['strCountry']}  
+
+📝 Description:
+{team['strDescriptionEN'][:500]}...
+"""
+
+            else:
+                response_text = "❌ Sorry, I couldn't find that team."
+
+        else:
+            response_text = "⚠ API error. Try again."
+
+        st.markdown(response_text)
+
+    st.session_state.messages.append({"role": "assistant", "content": response_text})
+
