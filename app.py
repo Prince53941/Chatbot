@@ -1,11 +1,8 @@
 import streamlit as st
 import os
-from dotenv import load_dotenv
 from openai import OpenAI
 
-# Load env vars
-load_dotenv()
-
+# Get API key directly from environment / Streamlit secrets
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 st.set_page_config(page_title="AI Chatbot", layout="centered")
@@ -13,13 +10,12 @@ st.title("🤖 Advanced AI Chatbot")
 
 SYSTEM_PROMPT = "You are a professional, highly intelligent AI assistant."
 
-# Initialize memory
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "system", "content": SYSTEM_PROMPT}
     ]
 
-# Show chat history
+# Show history
 for msg in st.session_state.messages[1:]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
@@ -41,7 +37,7 @@ if prompt:
         stream = client.chat.completions.create(
             model="gpt-4o",
             messages=st.session_state.messages,
-            stream=True,
+            stream=True
         )
 
         for chunk in stream:
